@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#101820">
+<title>根本ドライブ Ver.2</title>
+<style>
+:root{--panel:rgba(10,18,25,.88);--line:rgba(255,255,255,.2);--accent:#f4c542}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#101820;color:#fff;font-family:system-ui,-apple-system,"Hiragino Kaku Gothic ProN",sans-serif;touch-action:none}
+#game{position:fixed;inset:0;width:100%;height:100%;display:block;background:#9bc8e4}
+#hud{position:fixed;inset:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);pointer-events:none}
+.top{display:flex;justify-content:space-between;align-items:flex-start;padding:10px;gap:8px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:8px 11px;box-shadow:0 4px 16px #0004}
+#location{font-size:12px;letter-spacing:.04em;color:#dce8ef}
+#speed{font-size:28px;font-weight:800;line-height:1.05;font-variant-numeric:tabular-nums}
+#speed small{font-size:11px;font-weight:600;color:#c7d3db}
+#gearRead{font-size:20px;font-weight:800;color:var(--accent);text-align:center}
+#mission{font-size:12px;max-width:48vw;text-align:right}
+.bottom{position:absolute;left:0;right:0;bottom:10px;display:flex;justify-content:space-between;align-items:flex-end;padding:0 12px;gap:10px}
+.controls{display:flex;align-items:flex-end;gap:8px;pointer-events:auto}
+.ctrl{border:1px solid #ffffff45;color:white;background:linear-gradient(#344653,#14232d);border-radius:16px;min-width:62px;height:66px;font-weight:800;font-size:13px;box-shadow:0 4px 0 #071018;touch-action:none;user-select:none}
+.ctrl:active,.ctrl.down{transform:translateY(3px);box-shadow:0 1px 0 #071018;background:#536b79}
+.steer{width:74px;height:74px;border-radius:50%;font-size:27px}
+.pedals{display:flex;gap:7px}
+.pedals .ctrl{width:66px;height:78px}
+#accelerator{background:linear-gradient(#237d58,#12432f)}
+#brake{background:linear-gradient(#a74343,#5b2020)}
+.tools{position:absolute;right:12px;bottom:104px;display:flex;gap:7px;pointer-events:auto}
+.tools button{height:38px;min-width:74px;border-radius:12px;border:1px solid #ffffff55;background:var(--panel);color:#fff;font-weight:700}
+#gearPanel{position:absolute;left:50%;transform:translateX(-50%);bottom:96px;display:flex;gap:5px;pointer-events:auto;background:var(--panel);padding:6px;border-radius:13px;border:1px solid var(--line)}
+.gear{width:37px;height:35px;border:0;border-radius:8px;background:#334550;color:#fff;font-weight:800}
+.gear.active{background:var(--accent);color:#17212a}
+#overlay{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:22px;background:linear-gradient(#07121acc,#07121a99);z-index:5}
+.dialog{width:min(440px,100%);padding:24px 20px;background:#14232e;border:1px solid #ffffff30;border-radius:22px;text-align:center;box-shadow:0 18px 60px #0008}
+h1{font-size:25px;margin:0 0 5px} .sub{color:#c5d4dd;font-size:13px;line-height:1.65;margin:8px 0 17px}
+#start{width:100%;height:54px;border:0;border-radius:14px;background:#f4c542;color:#18232b;font-size:18px;font-weight:900}
+.note{font-size:11px;color:#9fb1bc;margin-top:12px}
+#toast{position:absolute;top:72px;left:50%;transform:translateX(-50%);background:#101b23eF;padding:9px 14px;border-radius:12px;font-size:13px;opacity:0;transition:opacity .2s;white-space:nowrap}
+@media(max-height:520px){.ctrl{height:55px}.steer{height:62px;width:62px}.pedals .ctrl{height:62px}.tools{bottom:80px}#gearPanel{bottom:76px}}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hud">
+ <div class="top">
+  <div class="panel"><div id="location">岐阜県 多治見市・根本エリア</div><div id="speed">0 <small>km/h</small></div></div>
+  <div class="panel"><div id="gearRead">P</div><div id="mission">自由走行モード</div></div>
+ </div>
+ <div id="toast"></div>
+ <div class="tools">
+  <button id="viewBtn">視点切替</button><button id="missionBtn">駐車ミッション</button>
+ </div>
+ <div id="gearPanel">
+  <button class="gear active" data-gear="P">P</button><button class="gear" data-gear="R">R</button><button class="gear" data-gear="N">N</button><button class="gear" data-gear="D">D</button>
+ </div>
+ <div class="bottom">
+  <div class="controls">
+   <button class="ctrl steer" id="left">◀</button><button class="ctrl steer" id="right">▶</button>
+  </div>
+  <div class="pedals">
+   <button class="ctrl" id="brake">ブレーキ</button><button class="ctrl" id="accelerator">アクセル</button>
+  </div>
+ </div>
+</div>
+<div id="overlay">
+ <div class="dialog">
+  <h1>🚙 根本ドライブ Ver.2</h1>
+  <div class="sub">白いステップワゴン SPADAで、多治見・根本エリアをドライブ。<br>信号や一般車に気をつけて自由に走ろう！</div>
+  <button id="start">ドライブ開始</button>
+  <div class="note">スマホは画面下のボタンで操作できます。横画面がおすすめ！</div>
+ </div>
+</div>
+<script>
+(()=>{
+'use strict';
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+let W=0,H=0,dpr=1,started=false,gear='P',speed=0,steer=0,roadPos=0,world=0,view='outside',accel=false,braking=false,left=false,right=false,mission=false,parked=false,toastTimer=0;
+const cars=[{z:.22,lane:-.55,color:'#d94b42'},{z:.58,lane:.48,color:'#e8e8e8'},{z:.83,lane:-.35,color:'#4779a8'}];
+function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}
+addEventListener('resize',resize);resize();
+function msg(t){const el=document.getElementById('toast');el.textContent=t;el.style.opacity=1;clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.style.opacity=0,1800)}
+function poly(points,color){ctx.fillStyle=color;ctx.beginPath();points.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();ctx.fill()}
+function line(x1,y1,x2,y2,color,width=2){ctx.strokeStyle=color;ctx.lineWidth=width;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke()}
+function roadX(y){const t=(y/H);return W/2 + Math.sin(world*.00045+t*2.4)*W*.095*(.2+t)+steer*W*.13*(.2+t)}
+function drawCar(x,y,w,h,color,player=false){
+ ctx.save();ctx.translate(x,y);
+ // shadow and body
+ ctx.fillStyle='#0005';ctx.beginPath();ctx.ellipse(0,h*.46,w*.62,h*.14,0,0,Math.PI*2);ctx.fill();
+ poly([[-w*.48,h*.30],[-w*.5,-h*.12],[-w*.34,-h*.43],[w*.34,-h*.43],[w*.5,-h*.12],[w*.48,h*.30]],color);
+ poly([[-w*.32,-h*.16],[-w*.22,-h*.38],[w*.22,-h*.38],[w*.32,-h*.16]],'#9db9c7');
+ line(-w*.3,h*.02,w*.3,h*.02,'#27323a',2);
+ ctx.fillStyle='#f6e6a1';ctx.fillRect(-w*.42,h*.18,w*.16,h*.08);ctx.fillRect(w*.26,h*.18,w*.16,h*.08);
+ ctx.fillStyle='#252b30';ctx.fillRect(-w*.52,-h*.05,w*.12,h*.28);ctx.fillRect(w*.4,-h*.05,w*.12,h*.28);
+ if(player){ctx.fillStyle='#fff';ctx.fillRect(-w*.12,h*.24,w*.24,h*.07);ctx.fillStyle='#202a31';ctx.font=`bold ${Math.max(7,w*.11)}px sans-serif`;ctx.textAlign='center';ctx.fillText('SPADA',0,h*.31)}
+ ctx.restore();
+}
+function scenery(){
+ const horizon=H*.34;
+ const sky=ctx.createLinearGradient(0,0,0,horizon);sky.addColorStop(0,'#78b5df');sky.addColorStop(1,'#d9e9e9');ctx.fillStyle=sky;ctx.fillRect(0,0,W,horizon);
+ // distant hills
+ poly([[0,horizon],[W*.12,H*.23],[W*.28,H*.29],[W*.43,H*.22],[W*.62,H*.3],[W*.82,H*.21],[W,H*.28],[W,horizon]],'#719b77');
+ ctx.fillStyle='#7eaa75';ctx.fillRect(0,horizon,W,H-horizon);
+ // houses and trees
+ for(let i=0;i<8;i++){let x=((i*173-world*.025)%(W+160)+W+160)%(W+160)-80;let y=horizon+15+(i%3)*13;
+  ctx.fillStyle='#526b55';ctx.beginPath();ctx.arc(x,y,17,0,Math.PI*2);ctx.fill();
+  poly([[x-23,y+7],[x,y-14],[x+23,y+7]],'#a85e4d');ctx.fillStyle=['#e7d9c1','#d4d9df','#d9c9a8'][i%3];ctx.fillRect(x-19,y+7,38,25);
+ }
+ // road trapezoid
+ const topY=horizon+8,botY=H+20,topW=W*.13,botW=W*.72;
+ const cxTop=roadX(topY),cxBot=roadX(botY);
+ poly([[cxTop-topW,topY],[cxTop+topW,topY],[cxBot+botW,botY],[cxBot-botW,botY]],'#42494d');
+ // shoulders
+ poly([[cxTop-topW-9,topY],[cxTop-topW,topY],[cxBot-botW,botY],[cxBot-botW-22,botY]],'#c5c1a5');
+ poly([[cxTop+topW,topY],[cxTop+topW+9,topY],[cxBot+botW+22,botY],[cxBot+botW,botY]],'#c5c1a5');
+ // lane dashes
+ for(let i=0;i<13;i++){let z=((i/13+world*.00022)%1);let y=topY+Math.pow(z,1.55)*(H-topY);let half=topW+(botW-topW)*z;let cx=roadX(y);let dashH=3+z*24;line(cx,y,cx,y+dashH,'#f5f0d8',1+z*3);line(cx-half/3,y,cx-half/3,y+dashH*.8,'#d8d6c9',1+z*2);line(cx+half/3,y,cx+half/3,y+dashH*.8,'#d8d6c9',1+z*2)}
+ // traffic signal near horizon
+ let sx=W*.78, sy=horizon+12;line(sx,sy-25,sx,sy+40,'#3a4145',4);ctx.fillStyle='#252d32';ctx.fillRect(sx-9,sy-35,18,40);ctx.fillStyle=(Math.floor(world/220)%2===0)?'#47c96b':'#d64a42';ctx.beginPath();ctx.arc(sx,sy-24,5,0,7);ctx.fill();
+ // station sign
+ ctx.fillStyle='#f2f0df';ctx.fillRect(W*.05,horizon+26,90,26);ctx.fillStyle='#26343b';ctx.font='bold 11px sans-serif';ctx.fillText('根本駅',W*.05+12,horizon+43);
+}
+function draw(){
+ ctx.clearRect(0,0,W,H);scenery();
+ // traffic vehicles with perspective
+ cars.forEach(c=>{let z=(c.z+world*.000055)%1;let y=H*.36+Math.pow(z,1.7)*H*.58;let rw=18+z*62,rh=24+z*64;let x=roadX(y)+c.lane*(W*.13+(W*.72-W*.13)*z);drawCar(x,y,rw,rh,c.color)});
+ // pedestrians on sidewalk
+ for(let i=0;i<2;i++){let y=H*.49+i*H*.17,x=(i?W*.91:W*.09)+(i?1:-1)*Math.sin(world*.001+i)*8;ctx.fillStyle='#28353c';ctx.beginPath();ctx.arc(x,y-9,5,0,7);ctx.fill();line(x,y-4,x,y+12,'#344b67',4);line(x,y+3,x-5,y+12,'#30383d',3);line(x,y+3,x+5,y+12,'#30383d',3)}
+ if(view==='outside'){drawCar(W/2+steer*W*.14,H*.83,Math.min(W*.23,125),Math.min(H*.22,115),'#f2f4f5',true)}
+ else{
+  // simple cockpit framing
+  ctx.fillStyle='#18242c';ctx.fillRect(0,H*.79,W,H*.21);
+  poly([[W*.16,H*.8],[W*.24,H*.59],[W*.76,H*.59],[W*.84,H*.8]],'#1b2b35');
+  ctx.strokeStyle='#090f13';ctx.lineWidth=10;ctx.beginPath();ctx.arc(W/2,H*.91,Math.min(W*.19,100),Math.PI*1.08,Math.PI*1.92);ctx.stroke();
+  ctx.fillStyle='#e7edf0';ctx.font='bold 13px sans-serif';ctx.textAlign='center';ctx.fillText('STEP WGN SPADA',W/2,H*.76);
+ }
+ // speed / mission visual
+ if(mission){ctx.fillStyle='#fff';ctx.font='bold 14px sans-serif';ctx.textAlign='center';ctx.fillText(parked?'駐車完了！':'駐車スペースを探そう',W/2,H*.22)}
+}
+let last=0;
+function loop(ts){if(!started)return;let dt=Math.min((ts-last)/1000||0,.04);last=ts;
+ if(left)steer=Math.max(-1,steer-dt*2.3);else if(right)steer=Math.min(1,steer+dt*2.3);else steer*=Math.pow(.90,dt*60);
+ if(gear==='D'&&accel)speed=Math.min(80,speed+dt*19);
+ else if(gear==='R'&&accel)speed=Math.min(18,speed+dt*9);
+ else if(braking)speed=Math.max(0,speed-dt*38);
+ else speed=Math.max(0,speed-dt*2.3);
+ if(gear==='P'||gear==='N')speed=Math.max(0,speed-dt*24);
+ if(gear==='R')world-=speed*dt*2.1;else world+=speed*dt*2.1;
+ if(mission&&speed<1&&gear==='P'&&world%1<.02&&!parked){parked=true;msg('駐車成功！おつかれさま！')}
+ document.getElementById('speed').innerHTML=Math.round(speed)+' <small>km/h</small>';
+ draw();requestAnimationFrame(loop)}
+function setGear(g){if(speed>2&&g==='P'){msg('停車してからPに入れてね');return}gear=g;document.getElementById('gearRead').textContent=g;document.querySelectorAll('.gear').forEach(b=>b.classList.toggle('active',b.dataset.gear===g));}
+document.querySelectorAll('.gear').forEach(b=>b.addEventListener('click',()=>setGear(b.dataset.gear)));
+function hold(id,down){const el=document.getElementById(id);const fn=e=>{e.preventDefault();down(true);el.classList.add('down')};const up=e=>{e.preventDefault();down(false);el.classList.remove('down')};el.addEventListener('pointerdown',fn);['pointerup','pointercancel','pointerleave'].forEach(ev=>el.addEventListener(ev,up))}
+hold('left',v=>left=v);hold('right',v=>right=v);hold('accelerator',v=>accel=v);hold('brake',v=>braking=v);
+document.getElementById('viewBtn').addEventListener('click',()=>{view=view==='outside'?'inside':'outside';msg(view==='inside'?'運転席視点':'車外視点')});
+document.getElementById('missionBtn').addEventListener('click',()=>{mission=!mission;parked=false;document.getElementById('mission').textContent=mission?'駐車ミッション':'自由走行モード';msg(mission?'駐車ミッション開始！':'自由走行に戻りました')});
+document.getElementById('start').addEventListener('click',()=>{document.getElementById('overlay').style.display='none';started=true;last=performance.now();setGear('D');requestAnimationFrame(loop)});
+})();
+</script>
+</body></html>
